@@ -1,0 +1,22 @@
+[package]
+name = "writing-analysis"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Lightweight writing analysis and NLP tools for Rust"
+repository = "https://github.com/jiayun/writing-analysis"
+keywords = ["nlp", "writing", "readability", "sentiment", "analysis"]
+categories = ["text-processing"]
+
+[dependencies]
+regex = "1.11"
+unicode-segmentation = "1.12"
+thiserror = "2.0"
+
+[dev-dependencies]
+pretty_assertions = "1.4"
+criterion = "0.5"
+
+[[bench]]
+name = "analysis_benchmark"
+harness = false
