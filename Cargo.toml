@@ -8,10 +8,15 @@ repository = "https://github.com/jiayun/writing-analysis"
 keywords = ["nlp", "writing", "readability", "sentiment", "analysis"]
 categories = ["text-processing"]
 
+[features]
+default = []
+chinese = ["opencc-jieba-rs"]
+
 [dependencies]
 regex = "1.11"
 unicode-segmentation = "1.12"
 thiserror = "2.0"
+opencc-jieba-rs = { version = "0.7", optional = true }
 
 [dev-dependencies]
 pretty_assertions = "1.4"

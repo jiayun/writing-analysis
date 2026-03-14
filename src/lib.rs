@@ -15,6 +15,9 @@ mod readability;
 mod sentence_variety;
 mod sentiment;
 
+#[cfg(feature = "chinese")]
+pub mod zh;
+
 pub use cliche::{detect_cliches, ClicheInstance, ClicheResult};
 pub use error::{Result, WritingAnalysisError};
 pub use filter_words::{detect_filter_words, FilterWordInstance, FilterWordResult};
@@ -23,6 +26,13 @@ pub use readability::{analyze_readability, ReadabilityScores};
 pub use sentence_variety::{analyze_sentence_variety, SentenceVarietyResult};
 pub use sentiment::{analyze_sentiment, SentimentResult, TokenSentiment};
 pub use utils::TextStatistics;
+
+#[cfg(feature = "chinese")]
+pub use zh::{
+    analyze_all_zh, analyze_readability_zh, analyze_sentence_variety_zh, analyze_sentiment_zh,
+    detect_cliches_zh, detect_filter_words_zh, detect_passive_voice_zh, AnalysisResultZh,
+    ChineseReadabilityScores,
+};
 
 /// Aggregated result of all analysis functions.
 #[derive(Debug, Clone, PartialEq)]

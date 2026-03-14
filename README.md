@@ -9,12 +9,27 @@ Lightweight writing analysis and NLP tools for Rust. Pure rule-based — no ML m
 
 ## Features
 
+### English (default)
+
 - **Readability scoring** — Flesch-Kincaid, Flesch Reading Ease, SMOG, Coleman-Liau, ARI
 - **Passive voice detection** — be-verb + past participle pattern matching with 90+ irregular verbs
 - **Cliche detection** — 85 built-in English cliches, case-insensitive matching
 - **Filter word detection** — spot filler words (just, really, very, basically, ...)
 - **Sentiment analysis** — AFINN-111 lexicon (2400+ words), token-level scoring
 - **Sentence variety** — length stats, starter diversity, structure variety score
+
+### Chinese (feature flag: `chinese`)
+
+- **Chinese readability** — SCRI (Simple Chinese Readability Index), common character ratio (top 3000)
+- **Passive voice detection** — 被/受/遭/給 + 為...所 patterns with exclusion list
+- **Cliche detection** — ~100 entries: overused idioms, bureaucratic phrases, writing cliches (Traditional + Simplified)
+- **Filter word detection** — ~26 common filler words (其實、基本上、就是、然後...)
+- **Sentiment analysis** — 500+ word lexicon with negation/intensifier handling (不/沒/非常/很)
+- **Sentence variety** — segmentation-based analysis
+- **Word segmentation** — opencc-jieba-rs, supports both Traditional and Simplified Chinese
+
+### General
+
 - **Zero unsafe code** — memory safe by design
 - **No runtime I/O** — all data embedded at compile time
 
@@ -22,6 +37,9 @@ Lightweight writing analysis and NLP tools for Rust. Pure rule-based — no ML m
 
 ```sh
 cargo add writing-analysis
+
+# With Chinese support
+cargo add writing-analysis --features chinese
 ```
 
 ```rust
@@ -122,9 +140,30 @@ println!("Avg length: {:.1} words", result.avg_length);
 println!("Variety: {:.2}", result.structure_variety);  // 0.5 — repetitive starters
 ```
 
+### Chinese Analysis
+
+```rust
+use writing_analysis::{analyze_all_zh, analyze_readability_zh, detect_passive_voice_zh};
+
+fn main() -> writing_analysis::Result<()> {
+    let text = "今天天氣很好。我們去公園散步。孩子們在草地上玩耍。";
+
+    let result = analyze_all_zh(text)?;
+
+    println!("SCRI: {:.1}", result.readability.scri);
+    println!("Common char ratio: {:.1}%", result.readability.common_char_ratio);
+    println!("Passive voice: {:.0}%", result.passive_voice.percentage);
+    println!("Cliches: {}", result.cliches.count);
+    println!("Filter words: {}", result.filter_words.count);
+    println!("Sentiment: {:.2}", result.sentiment.score);
+
+    Ok(())
+}
+```
+
 ## API Overview
 
-### Analysis Functions
+### English Functions
 
 | Function | Returns | Description |
 |----------|---------|-------------|
@@ -136,11 +175,26 @@ println!("Variety: {:.2}", result.structure_variety);  // 0.5 — repetitive sta
 | `analyze_sentiment` | `SentimentResult` | Score + per-token breakdown |
 | `analyze_sentence_variety` | `SentenceVarietyResult` | Length stats + starter diversity |
 
+### Chinese Functions (feature: `chinese`)
+
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `analyze_all_zh` | `AnalysisResultZh` | Run all 6 Chinese analyzers |
+| `analyze_readability_zh` | `ChineseReadabilityScores` | SCRI + common char ratio |
+| `detect_passive_voice_zh` | `PassiveVoiceResult` | 被/受/遭/給/為...所 patterns |
+| `detect_cliches_zh` | `ClicheResult` | Chinese cliche detection |
+| `detect_filter_words_zh` | `FilterWordResult` | Chinese filler word detection |
+| `analyze_sentiment_zh` | `SentimentResult` | Sentiment with negation handling |
+| `analyze_sentence_variety_zh` | `SentenceVarietyResult` | Segmentation-based variety analysis |
+| `segment` | `Vec<String>` | Word segmentation (Traditional + Simplified) |
+| `split_sentences_zh` | `Vec<&str>` | Chinese sentence splitting |
+
 ### Result Types
 
 | Type | Key Fields |
 |------|------------|
 | `ReadabilityScores` | `flesch_kincaid_grade`, `flesch_reading_ease`, `smog_index`, `coleman_liau_index`, `automated_readability_index` |
+| `ChineseReadabilityScores` | `scri`, `avg_sentence_length`, `avg_word_length`, `common_char_ratio`, `character_count`, `word_count`, `sentence_count` |
 | `PassiveVoiceResult` | `instances: Vec<PassiveInstance>`, `percentage: f64` |
 | `ClicheResult` | `instances: Vec<ClicheInstance>`, `count: usize` |
 | `FilterWordResult` | `instances: Vec<FilterWordInstance>`, `count: usize`, `percentage: f64` |
