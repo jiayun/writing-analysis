@@ -48,21 +48,21 @@ src/
 
 | Crate | Version | Purpose |
 |-------|---------|---------|
-| `jieba-rs` | 0.7 | Chinese word segmentation (分詞) |
+| `opencc-jieba-rs` | 0.7 | Chinese word segmentation (分詞, Traditional + Simplified) |
 | `regex` | 1.11 | (existing) Pattern matching |
 | `unicode-segmentation` | 1.12 | (existing) Sentence/character boundaries |
 
-`jieba-rs` embeds a dictionary (~5MB) at compile time. This is acceptable for a text analysis crate but should be behind a **feature flag** to avoid bloating English-only users.
+`opencc-jieba-rs` embeds dictionaries at compile time (including a combined Traditional + Simplified Chinese dictionary). This should be behind a **feature flag** to avoid bloating English-only users.
 
 ### Feature Flag
 
 ```toml
 [features]
 default = []
-chinese = ["jieba-rs"]
+chinese = ["opencc-jieba-rs"]
 
 [dependencies]
-jieba-rs = { version = "0.7", optional = true }
+opencc-jieba-rs = { version = "0.7", optional = true }
 ```
 
 Users opt in with:
@@ -118,24 +118,15 @@ pub fn split_sentences_zh(text: &str) -> Vec<&str> {
 Chinese text has no spaces between words. Word segmentation is required for all downstream analyses.
 
 ```rust
-use jieba_rs::Jieba;
+use opencc_jieba_rs::OpenCC;
 use std::sync::LazyLock;
 
-static JIEBA: LazyLock<Jieba> = LazyLock::new(Jieba::new);
+static OPENCC: LazyLock<OpenCC> = LazyLock::new(OpenCC::new);
 
 pub fn segment(text: &str) -> Vec<String> {
-    JIEBA.cut(text, false)
+    OPENCC.jieba_cut(text, false)
         .into_iter()
         .filter(|w| !w.trim().is_empty())
-        .map(|w| w.to_string())
-        .collect()
-}
-
-pub fn segment_for_search(text: &str) -> Vec<String> {
-    JIEBA.cut_for_search(text, false)
-        .into_iter()
-        .filter(|w| !w.trim().is_empty())
-        .map(|w| w.to_string())
         .collect()
 }
 ```
@@ -334,7 +325,7 @@ Result types reuse existing structs where possible (`PassiveVoiceResult`, `Clich
 |------|------|----------|
 | 1 | Feature flag setup + `zh/mod.rs` scaffolding | 0.5 day |
 | 2 | Sentence splitting (`。！？`) | 0.5 day |
-| 3 | jieba-rs integration + word segmentation | 1 day |
+| 3 | opencc-jieba-rs integration + word segmentation | 1 day |
 | 4 | Chinese readability formulas | 1 day |
 | 5 | 被動語態偵測 | 1 day |
 | 6 | 中文陳腔濫調清單 + 匹配 | 1 day |
@@ -389,22 +380,19 @@ For texts containing both Chinese and English:
 
 ### 1. Segmentation Accuracy
 
-**Problem**: jieba-rs is not perfect. Domain-specific terms, new words, and names may be mis-segmented.
+**Problem**: opencc-jieba-rs is not perfect. Domain-specific terms, new words, and names may be mis-segmented.
 
-**Solution**: jieba supports custom dictionaries. Allow users to pass additional dictionary entries:
-```rust
-pub fn analyze_all_zh_with_dict(text: &str, custom_words: &[&str]) -> Result<AnalysisResultZh>;
-```
+**Solution**: Future versions could expose custom dictionary loading. For now, the combined Traditional + Simplified dictionary provides good coverage.
 
 ### 2. Traditional vs Simplified
 
 **Problem**: The crate should support both 繁體 and 簡體.
 
-**Solution**: jieba-rs handles both. Sentiment lexicon and cliché lists should include both forms. Use a mapping table or maintain dual lists.
+**Solution**: opencc-jieba-rs uses a combined Traditional + Simplified dictionary, handling both scripts natively. Sentiment lexicon and cliché lists include both forms.
 
 ### 3. Binary Size
 
-**Problem**: jieba-rs embeds a ~5MB dictionary, significantly increasing binary size.
+**Problem**: opencc-jieba-rs embeds dictionaries at compile time, increasing binary size.
 
 **Solution**: Feature flag (`chinese`) keeps it opt-in. Users who only need English analysis pay no cost.
 
