@@ -29,58 +29,65 @@ fn find_sentence_spans(text: &str) -> Vec<&str> {
 
     let mut sentences = Vec::new();
     let mut start = 0;
-    let bytes = text.as_bytes();
-    let len = bytes.len();
 
-    let mut i = 0;
-    while i < len {
-        let b = bytes[i];
-        if b == b'.' || b == b'!' || b == b'?' {
+    // Iterate by char_indices to correctly handle multi-byte UTF-8
+    let chars: Vec<(usize, char)> = text.char_indices().collect();
+    let len = chars.len();
+
+    let mut ci = 0;
+    while ci < len {
+        let (_byte_pos, ch) = chars[ci];
+        if ch == '.' || ch == '!' || ch == '?' {
             // Check for ellipsis: consume all consecutive dots
-            if b == b'.' {
-                while i + 1 < len && bytes[i + 1] == b'.' {
-                    i += 1;
+            if ch == '.' {
+                while ci + 1 < len && chars[ci + 1].1 == '.' {
+                    ci += 1;
                 }
             }
+            let end_byte = chars[ci].0;
 
             // Check if this is an abbreviation
-            if b == b'.' && is_abbreviation(text, i) {
-                i += 1;
+            if ch == '.' && is_abbreviation(text, end_byte) {
+                ci += 1;
                 continue;
             }
 
             // Check if this is a decimal number (digit.digit)
-            if b == b'.' && i > 0 && i + 1 < len && bytes[i - 1].is_ascii_digit() && bytes[i + 1].is_ascii_digit() {
-                i += 1;
+            if ch == '.' && ci > 0 && ci + 1 < len
+                && chars[ci - 1].1.is_ascii_digit()
+                && chars[ci + 1].1.is_ascii_digit()
+            {
+                ci += 1;
                 continue;
             }
 
-            // Look ahead: is there whitespace followed by an uppercase letter, or is this the end?
-            let after = i + 1;
-            if after >= len {
+            // Byte position after the punctuation character
+            let after_byte = end_byte + ch.len_utf8();
+
+            if after_byte >= text.len() {
                 // End of text — this is a sentence boundary
-                let sentence = text[start..=i].trim();
+                let sentence = text[start..after_byte].trim();
                 if !sentence.is_empty() {
                     sentences.push(sentence);
                 }
-                start = after;
+                start = after_byte;
             } else {
                 // Check for whitespace then uppercase
-                let mut j = after;
-                while j < len && bytes[j].is_ascii_whitespace() {
+                let mut j = ci + 1;
+                while j < len && chars[j].1.is_ascii_whitespace() {
                     j += 1;
                 }
-                if j < len && bytes[j].is_ascii_uppercase() && j > after {
+                if j < len && chars[j].1.is_ascii_uppercase() && j > ci + 1 {
                     // Sentence boundary
-                    let sentence = text[start..=i].trim();
+                    let sentence = text[start..after_byte].trim();
                     if !sentence.is_empty() {
                         sentences.push(sentence);
                     }
-                    start = j;
+                    start = chars[j].0;
                 }
             }
         }
-        i += 1;
+        ci += 1;
     }
 
     // Remaining text
@@ -92,12 +99,16 @@ fn find_sentence_spans(text: &str) -> Vec<&str> {
     sentences
 }
 
-/// Check if the period at position `dot_pos` is part of an abbreviation.
+/// Check if the period at position `dot_pos` (byte offset) is part of an abbreviation.
 fn is_abbreviation(text: &str, dot_pos: usize) -> bool {
     for abbr in ABBREVIATIONS {
         let abbr_len = abbr.len();
         if dot_pos + 1 >= abbr_len {
             let candidate_start = dot_pos + 1 - abbr_len;
+            // Ensure candidate_start is on a char boundary
+            if !text.is_char_boundary(candidate_start) {
+                continue;
+            }
             let candidate = &text[candidate_start..=dot_pos];
             if candidate.eq_ignore_ascii_case(abbr) {
                 return true;
